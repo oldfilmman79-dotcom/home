@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>매물 스캔 노트</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+  :root {
+    --bg:#0f0f13; --surface:#1a1a22; --surface2:#22222e; --border:#2e2e3e;
+    --accent:#e8c840; --accent2:#40c8a0; --danger:#e85050; --info:#5088e8;
+    --purple:#a078e8; --text:#f0f0f5; --text2:#9090a8; --text3:#5a5a72;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:20px 16px 80px;}
+
+  /* HEADER */
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .header-title{font-size:19px;font-weight:900;letter-spacing:-0.5px;}
+  .header-title span{color:var(--accent);}
+  .header-brand{font-size:13px;font-weight:800;margin-top:4px;letter-spacing:-0.2px;background:linear-gradient(90deg,#e8c840,#40c8a0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .header-stats{display:flex;gap:12px;}
+  .stat-box{text-align:center;}
+  .stat-num{font-size:18px;font-weight:700;}
+  .stat-label{font-size:10px;color:var(--text2);margin-top:1px;}
+
+  /* API */
+  .api-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:12px;}
+  .api-label{font-size:11px;color:var(--text2);margin-bottom:7px;text-transform:uppercase;letter-spacing:0.5px;}
+  .api-row{display:flex;gap:8px;}
+  .api-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;}
+  .api-input:focus{border-color:var(--accent);}
+  .api-save-btn{padding:8px 13px;background:var(--accent);border:none;border-radius:8px;color:#0f0f13;font-size:12px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap;}
+  .api-status{font-size:11px;margin-top:5px;}
+  .api-status.ok{color:var(--accent2);}
+  .api-status.no{color:var(--text3);}
+
+  /* CATEGORY TABS */
+  .cat-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;}
+  .cat-tabs::-webkit-scrollbar{display:none;}
+  .cat-tab{padding:8px 16px;border-radius:22px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap;transition:all 0.15s;flex-shrink:0;}
+  .cat-tab.active-분양{background:var(--accent);color:#0f0f13;border-color:var(--accent);}
+  .cat-tab.active-매매{background:var(--info);color:#fff;border-color:var(--info);}
+  .cat-tab.active-전세{background:var(--accent2);color:#0f0f13;border-color:var(--accent2);}
+  .cat-tab.active-월세{background:var(--purple);color:#fff;border-color:var(--purple);}
+
+  /* SCAN ZONE */
+  .scan-zone{border:2px dashed var(--border);border-radius:16px;padding:20px;text-align:center;margin-bottom:10px;transition:all 0.2s;}
+  .scan-zone:hover{border-color:var(--accent);background:rgba(232,200,64,0.03);}
+  .scan-icon{font-size:30px;margin-bottom:7px;}
+  .scan-title{font-size:14px;font-weight:700;margin-bottom:3px;}
+  .scan-sub{font-size:11px;color:var(--text2);margin-bottom:14px;}
+  .scan-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+  .scan-btn{padding:9px 18px;border-radius:22px;border:1px solid var(--accent);background:rgba(232,200,64,0.1);color:var(--accent);font-size:12px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all 0.15s;}
+  .scan-btn.registry{border-color:var(--info);background:rgba(80,136,232,0.1);color:var(--info);}
+  .scan-btn:active{opacity:0.7;}
+  .scan-input{display:none;}
+
+  /* LOADING */
+  .loading-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+  .loading-overlay.show{display:flex;}
+  .loading-spinner{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-img-preview{width:120px;height:120px;object-fit:cover;border-radius:14px;border:2px solid var(--accent);}
+  .loading-text{font-size:14px;color:var(--text);font-weight:600;}
+  .loading-sub{font-size:12px;color:var(--text3);}
+
+  /* MANUAL BTN */
+  .manual-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--border);border-radius:12px;color:var(--text2);font-size:13px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;margin-bottom:16px;transition:all 0.15s;}
+  .manual-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* STATUS FILTER */
+  .status-tabs{display:flex;gap:6px;margin-bottom:14px;}
+  .stab{padding:6px 14px;border-radius:18px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all 0.15s;}
+  .stab.active{background:var(--surface2);color:var(--text);border-color:var(--text3);font-weight:700;}
+
+  /* CARDS */
+  .cards{display:flex;flex-direction:column;gap:12px;}
+  .card{background:var(--surface);border-radius:16px;border:1px solid var(--border);overflow:hidden;animation:fadeIn 0.3s ease;cursor:pointer;transition:transform 0.1s;}
+  .card:active{transform:scale(0.99);}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .card.sold{opacity:0.6;}
+  .card-thumb{width:100%;height:140px;object-fit:cover;display:block;}
+  .card-header{display:flex;align-items:flex-start;justify-content:space-between;padding:13px 13px 9px;}
+  .card-cat-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0;margin-top:5px;}
+  .card-name{font-size:14px;font-weight:700;display:flex;align-items:flex-start;}
+  .card-type{font-size:11px;color:var(--text2);margin-top:3px;}
+  .status-badge{padding:3px 9px;border-radius:18px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+  .status-badge.분양중{background:rgba(232,200,64,0.15);color:var(--accent);border:1px solid rgba(232,200,64,0.3);}
+  .status-badge.완료{background:rgba(232,80,80,0.15);color:var(--danger);border:1px solid rgba(232,80,80,0.3);}
+  .card-divider{height:1px;background:var(--border);margin:0 13px;}
+  .card-body{padding:10px 13px;display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+  .card-info-label{font-size:10px;color:var(--text3);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.4px;}
+  .card-info-value{font-size:13px;font-weight:500;}
+  .card-info-value.price{font-weight:800;}
+  .card-actions{display:flex;border-top:1px solid var(--border);}
+  .card-action-btn{flex:1;padding:10px;background:transparent;border:none;color:var(--text2);font-size:12px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:background 0.1s;}
+  .card-action-btn:not(:last-child){border-right:1px solid var(--border);}
+  .card-action-btn:hover{background:var(--surface2);color:var(--text);}
+
+  /* DETAIL MODAL */
+  .detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:150;align-items:center;justify-content:center;padding:16px;}
+  .detail-overlay.open{display:flex;}
+  .detail-modal{background:var(--surface);border-radius:20px;border:1px solid var(--border);width:100%;max-width:420px;max-height:90vh;overflow-y:auto;animation:popIn 0.2s ease;}
+  @keyframes popIn{from{opacity:0;transform:scale(0.95);}to{opacity:1;transform:scale(1);}}
+  .detail-img{width:100%;height:210px;object-fit:cover;border-radius:20px 20px 0 0;display:block;}
+  .detail-no-img{width:100%;height:100px;background:var(--surface2);border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:center;font-size:38px;}
+  .detail-body{padding:18px;}
+  .detail-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
+  .detail-name{font-size:20px;font-weight:900;letter-spacing:-0.5px;line-height:1.3;}
+  .detail-close{background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;margin-left:10px;}
+  .detail-badges{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+  .detail-badge{display:inline-block;padding:4px 11px;border-radius:18px;font-size:11px;font-weight:700;}
+  .detail-badge.분양{background:rgba(232,200,64,0.15);color:var(--accent);border:1px solid rgba(232,200,64,0.3);}
+  .detail-badge.매매{background:rgba(80,136,232,0.15);color:var(--info);border:1px solid rgba(80,136,232,0.3);}
+  .detail-badge.전세{background:rgba(64,200,160,0.15);color:var(--accent2);border:1px solid rgba(64,200,160,0.3);}
+  .detail-badge.월세{background:rgba(160,120,232,0.15);color:var(--purple);border:1px solid rgba(160,120,232,0.3);}
+  .detail-badge.완료{background:rgba(232,80,80,0.15);color:var(--danger);border:1px solid rgba(232,80,80,0.3);}
+  .detail-badge.진행{background:rgba(64,200,160,0.15);color:var(--accent2);border:1px solid rgba(64,200,160,0.3);}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .detail-row{grid-column:span 2;}
+  .detail-field{background:var(--surface2);border-radius:10px;padding:11px 13px;}
+  .detail-field-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;}
+  .detail-field-value{font-size:14px;font-weight:600;}
+  .detail-field-value.price{font-size:18px;font-weight:900;}
+  .detail-section{background:var(--surface2);border-radius:10px;padding:13px;margin-bottom:12px;}
+  .detail-section-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px;}
+  .detail-reg-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .detail-reg-item{}
+  .detail-reg-label{font-size:10px;color:var(--text3);margin-bottom:3px;}
+  .detail-reg-value{font-size:13px;font-weight:500;}
+  .detail-memo-text{font-size:13px;color:var(--text2);line-height:1.7;white-space:pre-wrap;}
+  .detail-date{font-size:11px;color:var(--text3);margin-bottom:14px;}
+  .detail-actions{display:flex;gap:7px;}
+  .detail-action-btn{flex:1;padding:11px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:12px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all 0.15s;}
+  .detail-action-btn.primary{background:var(--accent);border-color:var(--accent);color:#0f0f13;font-weight:700;}
+  .detail-action-btn.success{color:var(--accent2);border-color:rgba(64,200,160,0.3);}
+  .detail-action-btn.danger{color:var(--danger);border-color:rgba(232,80,80,0.3);}
+
+  /* FORM MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:180;align-items:flex-end;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:24px 24px 0 0;padding:22px 18px 40px;width:100%;max-width:480px;border:1px solid var(--border);border-bottom:none;animation:slideUp 0.25s ease;max-height:92vh;overflow-y:auto;}
+  @keyframes slideUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-title{font-size:16px;font-weight:700;margin-bottom:16px;}
+  .modal-title span{color:var(--accent);}
+  .form-group{margin-bottom:11px;}
+  .form-label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.4px;}
+  .form-input,.form-select,.form-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:14px;font-family:'Noto Sans KR',sans-serif;outline:none;}
+  .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
+  .form-textarea{resize:none;height:60px;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .form-section-title{font-size:11px;color:var(--accent2);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+  .modal-btns{display:flex;gap:8px;margin-top:16px;}
+  .btn-cancel{flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:'Noto Sans KR',sans-serif;font-size:13px;cursor:pointer;}
+  .btn-save{flex:2;padding:12px;background:var(--accent);border:none;border-radius:10px;color:#0f0f13;font-weight:700;font-family:'Noto Sans KR',sans-serif;font-size:13px;cursor:pointer;}
+
+  .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);padding:11px 22px;border-radius:28px;font-size:13px;font-weight:700;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999;white-space:nowrap;}
+  .toast.success{background:var(--accent2);color:#0f0f13;}
+  .toast.error{background:var(--danger);color:#fff;}
+  .toast.show{opacity:1;}
+
+  .empty{text-align:center;padding:50px 20px;color:var(--text3);}
+  .empty-icon{font-size:38px;margin-bottom:10px;}
+
+  /* category color helpers */
+  .col-분양{color:var(--accent);}
+  .col-매매{color:var(--info);}
+  .col-전세{color:var(--accent2);}
+  .col-월세{color:var(--purple);}
+  .dot-분양{background:var(--accent);}
+  .dot-매매{background:var(--info);}
+  .dot-전세{background:var(--accent2);}
+  .dot-월세{background:var(--purple);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">📸 <span>매물</span> 노트</div>
+    <div class="header-brand">🏢 삼촌은 공인중개사</div>
+  </div>
+  <div class="header-stats">
+    <div class="stat-box"><div class="stat-num col-분양" id="cnt분양">0</div><div class="stat-label">분양</div></div>
+    <div class="stat-box"><div class="stat-num col-매매" id="cnt매매">0</div><div class="stat-label">매매</div></div>
+    <div class="stat-box"><div class="stat-num col-전세" id="cnt전세">0</div><div class="stat-label">전세</div></div>
+    <div class="stat-box"><div class="stat-num col-월세" id="cnt월세">0</div><div class="stat-label">월세</div></div>
+  </div>
+</div>
+
+<!-- API Key -->
+<div class="api-section">
+  <div class="api-label">🔑 Claude API Key</div>
+  <div class="api-row">
+    <input class="api-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-...">
+    <button class="api-save-btn" onclick="saveApiKey()">저장</button>
+  </div>
+  <div class="api-status no" id="apiStatus">API Key 입력 시 사진 자동 인식</div>
+</div>
+
+<!-- Category Tabs -->
+<div class="cat-tabs">
+  <button class="cat-tab active-분양" data-cat="분양" onclick="setCat('분양',this)">🏗️ 분양</button>
+  <button class="cat-tab" data-cat="매매" onclick="setCat('매매',this)">🏠 매매</button>
+  <button class="cat-tab" data-cat="전세" onclick="setCat('전세',this)">🔑 전세</button>
+  <button class="cat-tab" data-cat="월세" onclick="setCat('월세',this)">💸 월세</button>
+</div>
+
+<!-- Scan Zone -->
+<div class="scan-zone">
+  <div class="scan-icon" id="scanIcon">⚡</div>
+  <div class="scan-title" id="scanTitle">사진 찍으면 즉시 자동 등록!</div>
+  <div class="scan-sub" id="scanSub">AI가 매물 정보를 읽어서 바로 저장합니다</div>
+  <div class="scan-btns">
+    <label class="scan-btn" for="scanCamera">📷 카메라</label>
+    <label class="scan-btn" for="scanGallery">🖼️ 갤러리</label>
+    <label class="scan-btn registry" id="registryBtn" for="scanRegistry" style="display:none">📋 등기부등본</label>
+  </div>
+  <input type="file" class="scan-input" id="scanCamera" accept="image/*" capture="environment" onchange="handleImage(this,'매물')">
+  <input type="file" class="scan-input" id="scanGallery" accept="image/*,image/heic,image/heif" onchange="handleImage(this,'매물')">
+  <input type="file" class="scan-input" id="scanRegistry" accept="image/*,image/heic,image/heif" onchange="handleImage(this,'등기')">
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <img class="loading-img-preview" id="loadingImg" src="" alt="">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">AI가 정보를 읽는 중...</div>
+  <div class="loading-sub">잠깐만 기다려주세요 ☕</div>
+</div>
+
+<!-- Manual -->
+<button class="manual-btn" onclick="openManual()">✏️ 직접 입력</button>
+
+<!-- Status Filter -->
+<div class="status-tabs">
+  <button class="stab active" onclick="setStatus('all',this)">전체</button>
+  <button class="stab" onclick="setStatus('진행',this)">진행중</button>
+  <button class="stab" onclick="setStatus('완료',this)">완료</button>
+</div>
+
+<div class="cards" id="cardList"></div>
+<div class="toast" id="toast"></div>
+
+<!-- Detail Modal -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetailOutside(event)">
+  <div class="detail-modal">
+    <div id="detailImgArea"></div>
+    <div class="detail-body">
+      <div class="detail-top">
+        <div class="detail-name" id="detailName"></div>
+        <div class="detail-close" onclick="closeDetail()">✕</div>
+      </div>
+      <div class="detail-badges" id="detailBadges"></div>
+
+      <!-- 기본 정보 -->
+      <div class="detail-grid" id="detailGrid"></div>
+
+      <!-- 등기부등본 정보 (있을 때만) -->
+      <div class="detail-section" id="detailRegSection" style="display:none">
+        <div class="detail-section-title">📋 등기부등본 정보</div>
+        <div class="detail-reg-grid" id="detailRegGrid"></div>
+      </div>
+
+      <!-- 메모 -->
+      <div class="detail-section" id="detailMemoSection">
+        <div class="detail-section-title">💬 메모 / 특이사항</div>
+        <div class="detail-memo-text" id="detailMemo"></div>
+      </div>
+
+      <div class="detail-date" id="detailDate"></div>
+      <div class="detail-actions">
+        <button class="detail-action-btn" onclick="closeDetailAndEdit()">✏️ 수정</button>
+        <button class="detail-action-btn primary" id="detailToggleBtn" onclick="closeDetailAndToggle()">✅ 완료</button>
+        <button class="detail-action-btn danger" onclick="closeDetailAndDelete()">🗑️</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Form Modal -->
+<div class="modal-overlay" id="manualOverlay" onclick="closeManualOutside(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">✏️ <span>직접 입력</span></div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">카테고리</label>
+        <select class="form-select" id="m_cat" onchange="toggleRegistryFields()">
+          <option>분양</option><option>매매</option><option>전세</option><option>월세</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">건물유형</label>
+        <select class="form-select" id="m_type"><option>빌라</option><option>아파트</option><option>오피스텔</option><option>단독주택</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">매물명</label><input class="form-input" id="m_name" placeholder="예) 법원리 신축빌라 A동 3층"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">가격</label><input class="form-input" id="m_price" placeholder="1억 5천"></div>
+      <div class="form-group"><label class="form-label">평수</label><input class="form-input" id="m_area" placeholder="24평"></div>
+    </div>
+    <div class="form-group"><label class="form-label">위치</label><input class="form-input" id="m_location" placeholder="파주 법원읍 법원리"></div>
+    <div class="form-group"><label class="form-label">메모</label><textarea class="form-textarea" id="m_memo" placeholder="연락처, 층수, 방개수, 특이사항 등"></textarea></div>
+
+    <!-- 등기부등본 필드 (매매/전세/월세만) -->
+    <div id="registryFields" style="display:none">
+      <div class="form-section-title">📋 등기부등본 정보</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">소유자명</label><input class="form-input" id="m_owner" placeholder="홍길동"></div>
+        <div class="form-group"><label class="form-label">지번/도로명</label><input class="form-input" id="m_regAddr" placeholder="법원리 123-4"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">건물면적(㎡)</label><input class="form-input" id="m_buildArea" placeholder="79.2㎡"></div>
+        <div class="form-group"><label class="form-label">대지면적(㎡)</label><input class="form-input" id="m_landArea" placeholder="120㎡"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">구조</label><input class="form-input" id="m_structure" placeholder="철근콘크리트"></div>
+        <div class="form-group"><label class="form-label">사용승인일</label><input class="form-input" id="m_approvalDate" placeholder="2024.03.15"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">근저당 여부</label><select class="form-select" id="m_mortgage"><option>없음</option><option>있음</option></select></div>
+        <div class="form-group"><label class="form-label">근저당 금액</label><input class="form-input" id="m_mortgageAmt" placeholder="없으면 공란"></div>
+      </div>
+      <div class="form-group"><label class="form-label">기타 권리사항</label><input class="form-input" id="m_rights" placeholder="압류, 가처분 등"></div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeManual()">취소</button>
+      <button class="btn-save" onclick="saveManual()">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let properties = JSON.parse(localStorage.getItem('매물_v4') || '[]');
+let currentCat = '분양';
+let currentStatus = 'all';
+let currentDetailId = null;
+
+// ── API KEY ──────────────────────────────
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return;
+  localStorage.setItem('claudeApiKey', key);
+  updateApiStatus();
+  showToast('API Key 저장됨 ✓', 'success');
+}
+function updateApiStatus() {
+  const key = localStorage.getItem('claudeApiKey');
+  const el = document.getElementById('apiStatus');
+  if (key) {
+    el.textContent = '✓ 등록됨 — 사진 찍으면 자동 인식!';
+    el.className = 'api-status ok';
+    document.getElementById('apiKeyInput').value = key.slice(0,14) + '...';
+  } else {
+    el.textContent = 'API Key 입력 시 사진 자동 인식';
+    el.className = 'api-status no';
+  }
+}
+
+// ── CATEGORY ─────────────────────────────
+function setCat(cat, el) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(t => t.className = 'cat-tab');
+  el.classList.add('active-' + cat);
+
+  // 스캔존 UI 업데이트
+  const isSale = (cat === '분양');
+  document.getElementById('scanIcon').textContent = isSale ? '⚡' : '🔍';
+  document.getElementById('scanSub').textContent = isSale
+    ? 'AI가 매물 정보를 읽어서 바로 저장합니다'
+    : '매물 속지 또는 등기부등본 사진을 찍어보세요';
+  document.getElementById('registryBtn').style.display = isSale ? 'none' : '';
+
+  render();
+}
+
+function setStatus(s, el) {
+  currentStatus = s;
+  document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+// ── IMAGE HANDLER ─────────────────────────
+function resizeImage(dataUrl, maxSize, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxSize || h > maxSize) {
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function handleImage(input, mode) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const apiKey = localStorage.getItem('claudeApiKey');
+  if (!apiKey) { showToast('API Key를 먼저 입력해주세요', 'error'); input.value = ''; return; }
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    // input 초기화를 나중에
+    let dataUrl = e.target.result;
+
+    document.getElementById('loadingImg').src = dataUrl;
+    document.getElementById('loadingText').textContent = mode === '등기'
+      ? 'AI가 등기부등본을 분석 중...' : 'AI가 매물 정보를 읽는 중...';
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    try {
+      // 아이폰 대용량 이미지 리사이즈 (1800px, 0.85 품질)
+      dataUrl = await resizeImage(dataUrl, 1800, 0.85);
+      const base64 = dataUrl.split(',')[1];
+
+      const data = mode === '등기'
+        ? await extractRegistry(base64, apiKey)
+        : await extractProperty(base64, apiKey);
+
+      const newProp = {
+        id: Date.now().toString(),
+        cat: currentCat,
+        name: data.name || (currentCat + ' 매물 ' + (properties.length + 1)),
+        type: data.type || '빌라',
+        price: data.price || '',
+        area: data.area || '',
+        location: data.location || '',
+        memo: data.memo || '',
+        image: dataUrl,
+        status: '진행',
+        createdAt: new Date().toLocaleDateString('ko-KR'),
+        registry: mode === '등기' ? data : null
+      };
+
+      properties.unshift(newProp);
+      save(); render();
+      showToast('⚡ 자동 등록 완료!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('인식 실패 — 직접 입력해주세요', 'error');
+    } finally {
+      document.getElementById('loadingOverlay').classList.remove('show');
+      input.value = '';
+    }
+  };
+  reader.onerror = () => {
+    showToast('사진을 읽을 수 없어요', 'error');
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function extractProperty(base64, apiKey) {
+  const res = await callClaude(base64, apiKey, `이 이미지는 부동산 매물 속지(전단지/분양표/서류 등)입니다.
+
+호수별 매물 정보가 있으면 각 호수마다 하나씩 배열로 추출하세요.
+호수 정보가 없으면 배열에 항목 1개만 넣으세요.
+
+반드시 아래 JSON 배열 형식으로만 응답하세요. 순수 JSON만. 마크다운 없이.
+
+[
+  {
+    "name": "단지명 + 동 + 호수 (예: 포레스트휴 601동 101호)",
+    "type": "빌라 or 아파트 or 오피스텔 or 단독주택",
+    "price": "분양가 또는 가격 (예: 3억8500만)",
+    "area": "전용면적 또는 분양면적 (예: 61.06㎡)",
+    "location": "주소 또는 지역명",
+    "memo": "방/욕실, 테라스 여부, 연락처, 기타 특이사항"
+  }
+]`);
+  return res;
+}
+
+async function handleImage(input, mode) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const apiKey = localStorage.getItem('claudeApiKey');
+  if (!apiKey) { showToast('API Key를 먼저 입력해주세요', 'error'); input.value = ''; return; }
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    let dataUrl = e.target.result;
+
+    document.getElementById('loadingImg').src = dataUrl;
+    document.getElementById('loadingText').textContent = mode === '등기'
+      ? 'AI가 등기부등본을 분석 중...' : 'AI가 매물 정보를 읽는 중...';
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    try {
+      dataUrl = await resizeImage(dataUrl, 1800, 0.85);
+      const base64 = dataUrl.split(',')[1];
+
+      if (mode === '등기') {
+        // 등기부등본 — 단건
+        const data = await extractRegistry(base64, apiKey);
+        properties.unshift({
+          id: Date.now().toString(),
+          cat: currentCat,
+          name: data.name || (currentCat + ' 매물 ' + (properties.length + 1)),
+          type: data.type || '빌라',
+          price: data.price || '',
+          area: data.area || '',
+          location: data.location || '',
+          memo: data.memo || '',
+          image: dataUrl,
+          status: '진행',
+          createdAt: new Date().toLocaleDateString('ko-KR'),
+          registry: data
+        });
+        save(); render();
+        showToast('⚡ 등기 등록 완료!', 'success');
+      } else {
+        // 매물 속지 — 호수별 다중 등록
+        const list = await extractProperty(base64, apiKey);
+        const units = Array.isArray(list) ? list : [list];
+        const now = new Date().toLocaleDateString('ko-KR');
+
+        units.forEach((data, i) => {
+          properties.unshift({
+            id: (Date.now() + i).toString(),
+            cat: currentCat,
+            name: data.name || (currentCat + ' 매물 ' + (properties.length + 1)),
+            type: data.type || '빌라',
+            price: data.price || '',
+            area: data.area || '',
+            location: data.location || '',
+            memo: data.memo || '',
+            image: dataUrl,
+            status: '진행',
+            createdAt: now,
+            registry: null
+          });
+        });
+
+        save(); render();
+        showToast(`⚡ ${units.length}개 호수 자동 등록 완료!`, 'success');
+      }
+    } catch (err) {
+      console.error('등록 실패:', err);
+      showToast('인식 실패: ' + (err.message || '직접 입력 해주세요'), 'error');
+    } finally {
+      document.getElementById('loadingOverlay').classList.remove('show');
+      input.value = '';
+    }
+  };
+  reader.onerror = () => {
+    showToast('사진을 읽을 수 없어요', 'error');
+    input.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function extractRegistry(base64, apiKey) {
+  const res = await callClaude(base64, apiKey, `이 이미지는 부동산 등기부등본입니다.
+아래 JSON 형식으로만 응답하세요. 순수 JSON만. 없으면 빈 문자열.
+{
+  "name": "건물명 또는 소재지 요약",
+  "type": "빌라 or 아파트 or 오피스텔 or 단독주택",
+  "price": "",
+  "area": "전용면적 또는 건물면적(㎡)",
+  "location": "소재지 주소",
+  "memo": "기타 특이사항",
+  "owner": "소유자명",
+  "regAddr": "지번 또는 도로명주소",
+  "buildArea": "건물면적(㎡)",
+  "landArea": "대지면적(㎡)",
+  "structure": "구조 (예: 철근콘크리트)",
+  "approvalDate": "사용승인일",
+  "mortgage": "근저당 있음 or 없음",
+  "mortgageAmt": "근저당 금액",
+  "rights": "기타 권리사항 (압류, 가처분 등)"
+}`);
+  return res;
+}
+
+async function callClaude(base64, apiKey, prompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    })
+  });
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error('API 오류:', res.status, errBody);
+    throw new Error('API 오류 ' + res.status);
+  }
+  const data = await res.json();
+  const text = data.content.map(b => b.text || '').join('');
+  console.log('AI 응답 원문:', text);
+  // JSON 부분만 추출 (배열 or 객체)
+  const arrMatch = text.match(/\[[\s\S]*\]/);
+  const objMatch = text.match(/\{[\s\S]*\}/);
+  const jsonStr = arrMatch ? arrMatch[0] : (objMatch ? objMatch[0] : text);
+  return JSON.parse(jsonStr);
+}
+
+// ── RENDER ────────────────────────────────
+function render() {
+  // counts
+  ['분양','매매','전세','월세'].forEach(c => {
+    document.getElementById('cnt'+c).textContent = properties.filter(p => p.cat === c && p.status === '진행').length;
+  });
+
+  const list = document.getElementById('cardList');
+  let filtered = properties.filter(p => p.cat === currentCat);
+  if (currentStatus !== 'all') filtered = filtered.filter(p => p.status === currentStatus);
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div style="font-size:13px">${currentCat} 매물이 없습니다<br><span style="font-size:11px;color:var(--text3)">사진을 찍으면 바로 등록돼요!</span></div></div>`;
+    return;
+  }
+
+  const priceCol = { 분양:'var(--accent)', 매매:'var(--info)', 전세:'var(--accent2)', 월세:'var(--purple)' };
+
+  list.innerHTML = filtered.map(p => `
+    <div class="card ${p.status==='완료'?'sold':''}" onclick="openDetail('${p.id}')">
+      ${p.image ? `<img class="card-thumb" src="${p.image}" alt="매물사진">` : ''}
+      <div class="card-header">
+        <div style="flex:1;min-width:0">
+          <div class="card-name">
+            <span class="card-cat-dot dot-${p.cat}"></span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+          </div>
+          <div class="card-type">${p.type} · ${p.createdAt}${p.registry ? ' · 📋등기' : ''}</div>
+        </div>
+        <div class="status-badge ${p.status==='완료'?'완료':'분양중'}" style="margin-left:8px">
+          ${p.status==='완료' ? '✓ 완료' : '● 진행중'}
+        </div>
+      </div>
+      <div class="card-divider"></div>
+      <div class="card-body">
+        <div class="card-info"><div class="card-info-label">가격</div><div class="card-info-value price" style="color:${priceCol[p.cat]}">${p.price||'-'}</div></div>
+        <div class="card-info"><div class="card-info-label">평수</div><div class="card-info-value">${p.area||'-'}</div></div>
+        <div class="card-info" style="grid-column:span 2"><div class="card-info-label">위치</div><div class="card-info-value">${p.location||'-'}</div></div>
+      </div>
+      <div class="card-actions" onclick="event.stopPropagation()">
+        <button class="card-action-btn" onclick="editProperty('${p.id}')">✏️ 수정</button>
+        <button class="card-action-btn" onclick="toggleStatus('${p.id}')" style="color:${p.status==='완료'?'var(--accent2)':'var(--danger)'}">
+          ${p.status==='완료' ? '🔄 진행중' : '✅ 완료'}
+        </button>
+        <button class="card-action-btn" style="color:var(--danger)" onclick="deleteProperty('${p.id}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── DETAIL MODAL ──────────────────────────
+function openDetail(id) {
+  const p = properties.find(p => p.id === id);
+  if (!p) return;
+  currentDetailId = id;
+
+  document.getElementById('detailImgArea').innerHTML = p.image
+    ? `<img class="detail-img" src="${p.image}" alt="매물사진">`
+    : `<div class="detail-no-img">🏠</div>`;
+
+  document.getElementById('detailName').textContent = p.name;
+
+  const priceCol = { 분양:'var(--accent)', 매매:'var(--info)', 전세:'var(--accent2)', 월세:'var(--purple)' };
+
+  document.getElementById('detailBadges').innerHTML = `
+    <span class="detail-badge ${p.cat}">${p.cat}</span>
+    <span class="detail-badge ${p.status==='완료'?'완료':'진행'}">${p.status==='완료'?'✓ 완료':'● 진행중'}</span>
+    ${p.registry ? '<span class="detail-badge 전세" style="background:rgba(80,136,232,0.15);color:var(--info);border-color:rgba(80,136,232,0.3)">📋 등기부등본</span>' : ''}
+  `;
+
+  document.getElementById('detailGrid').innerHTML = `
+    <div class="detail-field"><div class="detail-field-label">가격</div><div class="detail-field-value price" style="color:${priceCol[p.cat]}">${p.price||'-'}</div></div>
+    <div class="detail-field"><div class="detail-field-label">평수</div><div class="detail-field-value">${p.area||'-'}</div></div>
+    <div class="detail-field"><div class="detail-field-label">건물유형</div><div class="detail-field-value">${p.type||'-'}</div></div>
+    <div class="detail-field"><div class="detail-field-label">카테고리</div><div class="detail-field-value">${p.cat}</div></div>
+    <div class="detail-field detail-row"><div class="detail-field-label">위치</div><div class="detail-field-value">${p.location||'-'}</div></div>
+  `;
+
+  // 등기부등본
+  const regSection = document.getElementById('detailRegSection');
+  if (p.registry) {
+    const r = p.registry;
+    document.getElementById('detailRegGrid').innerHTML = [
+      ['소유자', r.owner], ['지번/주소', r.regAddr],
+      ['건물면적', r.buildArea], ['대지면적', r.landArea],
+      ['구조', r.structure], ['사용승인일', r.approvalDate],
+      ['근저당', r.mortgage], ['근저당 금액', r.mortgageAmt],
+      ['권리사항', r.rights]
+    ].filter(([,v]) => v).map(([l,v]) => `
+      <div class="detail-reg-item"><div class="detail-reg-label">${l}</div><div class="detail-reg-value">${v}</div></div>
+    `).join('');
+    regSection.style.display = '';
+  } else {
+    regSection.style.display = 'none';
+  }
+
+  const memoSection = document.getElementById('detailMemoSection');
+  if (p.memo) {
+    document.getElementById('detailMemo').textContent = p.memo;
+    memoSection.style.display = '';
+  } else {
+    memoSection.style.display = 'none';
+  }
+
+  document.getElementById('detailDate').textContent = '📅 등록일 ' + p.createdAt;
+
+  const tb = document.getElementById('detailToggleBtn');
+  if (p.status === '완료') {
+    tb.textContent = '🔄 진행중으로';
+    tb.className = 'detail-action-btn success';
+  } else {
+    tb.textContent = '✅ 완료 처리';
+    tb.className = 'detail-action-btn primary';
+  }
+
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
+function closeDetailOutside(e) { if (e.target === document.getElementById('detailOverlay')) closeDetail(); }
+function closeDetailAndEdit() { closeDetail(); setTimeout(() => editProperty(currentDetailId), 180); }
+function closeDetailAndToggle() { closeDetail(); setTimeout(() => toggleStatus(currentDetailId), 180); }
+function closeDetailAndDelete() { closeDetail(); setTimeout(() => deleteProperty(currentDetailId), 180); }
+
+// ── STATUS ───────────────────────────────
+function toggleStatus(id) {
+  const p = properties.find(p => p.id === id);
+  if (!p) return;
+  if (p.status === '진행') {
+    if (!confirm(`"${p.name}"\n완료 처리할까요?`)) return;
+    p.status = '완료';
+    showToast('완료 처리됨 ✓', 'success');
+  } else {
+    p.status = '진행';
+    showToast('진행중으로 변경됨', 'success');
+  }
+  save(); render();
+}
+
+function deleteProperty(id) {
+  const p = properties.find(p => p.id === id);
+  if (!confirm(`"${p?.name}"\n삭제할까요?`)) return;
+  properties = properties.filter(p => p.id !== id);
+  save(); render();
+  showToast('삭제됨', 'success');
+}
+
+// ── MANUAL FORM ──────────────────────────
+function toggleRegistryFields() {
+  const cat = document.getElementById('m_cat').value;
+  document.getElementById('registryFields').style.display = (cat !== '분양') ? '' : 'none';
+}
+
+function openManual() {
+  ['m_name','m_price','m_area','m_location','m_memo','m_owner','m_regAddr','m_buildArea','m_landArea','m_structure','m_approvalDate','m_mortgageAmt','m_rights'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('m_cat').value = currentCat;
+  document.getElementById('m_type').value = '빌라';
+  document.getElementById('m_mortgage').value = '없음';
+  document.getElementById('modalTitle').innerHTML = '✏️ <span>직접 입력</span>';
+  delete document.getElementById('manualOverlay').dataset.editId;
+  toggleRegistryFields();
+  document.getElementById('manualOverlay').classList.add('open');
+}
+
+function editProperty(id) {
+  const p = properties.find(p => p.id === id);
+  if (!p) return;
+  document.getElementById('m_cat').value = p.cat;
+  document.getElementById('m_type').value = p.type;
+  document.getElementById('m_name').value = p.name;
+  document.getElementById('m_price').value = p.price;
+  document.getElementById('m_area').value = p.area;
+  document.getElementById('m_location').value = p.location;
+  document.getElementById('m_memo').value = p.memo;
+  if (p.registry) {
+    const r = p.registry;
+    ['owner','regAddr','buildArea','landArea','structure','approvalDate','mortgageAmt','rights'].forEach(k => {
+      const el = document.getElementById('m_'+k); if(el) el.value = r[k]||'';
+    });
+    document.getElementById('m_mortgage').value = r.mortgage||'없음';
+  }
+  document.getElementById('modalTitle').innerHTML = '✏️ <span>매물 수정</span>';
+  document.getElementById('manualOverlay').dataset.editId = id;
+  toggleRegistryFields();
+  document.getElementById('manualOverlay').classList.add('open');
+}
+
+function closeManual() { document.getElementById('manualOverlay').classList.remove('open'); }
+function closeManualOutside(e) { if (e.target === document.getElementById('manualOverlay')) closeManual(); }
+
+function saveManual() {
+  const name = document.getElementById('m_name').value.trim();
+  if (!name) { showToast('매물명을 입력해주세요', 'error'); return; }
+  const cat = document.getElementById('m_cat').value;
+  const editId = document.getElementById('manualOverlay').dataset.editId;
+
+  const regData = (cat !== '분양') ? {
+    owner: document.getElementById('m_owner').value,
+    regAddr: document.getElementById('m_regAddr').value,
+    buildArea: document.getElementById('m_buildArea').value,
+    landArea: document.getElementById('m_landArea').value,
+    structure: document.getElementById('m_structure').value,
+    approvalDate: document.getElementById('m_approvalDate').value,
+    mortgage: document.getElementById('m_mortgage').value,
+    mortgageAmt: document.getElementById('m_mortgageAmt').value,
+    rights: document.getElementById('m_rights').value,
+  } : null;
+
+  const hasReg = regData && Object.values(regData).some(v => v);
+
+  const obj = {
+    cat, name,
+    type: document.getElementById('m_type').value,
+    price: document.getElementById('m_price').value,
+    area: document.getElementById('m_area').value,
+    location: document.getElementById('m_location').value,
+    memo: document.getElementById('m_memo').value,
+    registry: hasReg ? regData : null,
+  };
+
+  if (editId) {
+    const idx = properties.findIndex(p => p.id === editId);
+    if (idx !== -1) properties[idx] = { ...properties[idx], ...obj };
+    showToast('수정 완료 ✓', 'success');
+  } else {
+    properties.unshift({ id: Date.now().toString(), ...obj, image: null, status: '진행', createdAt: new Date().toLocaleDateString('ko-KR') });
+    showToast('등록 완료 ✓', 'success');
+  }
+
+  // sync cat view
+  currentCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(t => {
+    t.className = 'cat-tab';
+    if (t.dataset.cat === cat) t.classList.add('active-' + cat);
+  });
+
+  save(); render(); closeManual();
+}
+
+function save() { localStorage.setItem('매물_v4', JSON.stringify(properties)); }
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+updateApiStatus();
+render();
+</script>
+</body>
+</html>
